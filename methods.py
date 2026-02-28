@@ -92,8 +92,8 @@ def download_and_merge_month(location_id, year, month, city, country):
         full_df = pd.concat(df_list, ignore_index=True)
         full_df["city"] = city
         full_df["country"] = country
-        os.makedirs("data", exist_ok=True)
-        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv"
+        os.makedirs("data", exist_ok=True) #tehdään kansio
+        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv" #filepath luotaville filuille
         full_df.to_csv(filepath, index=False)
         return full_df
     else:
