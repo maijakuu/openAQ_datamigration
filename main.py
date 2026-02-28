@@ -1,8 +1,4 @@
-import pandas as pd
 from methods import * 
-
-# load_dotenv:n kutsu lataa arkaluontoiset tiedot ympäristömuuttujiin
-
 
 def run():
     while True:
@@ -42,9 +38,51 @@ def run():
                 #download_file_by_location(location_id, 2024, 1, 1) Tämä antaa yhden päivän tiedot
             download_and_merge_month(location_id,2024,1,city_name,country_name) #KOLMAS FUNKTIO
             #Tämä antaa yhden location_id:n tiedot yhdeltä kuukaudelta
-    
     print()
     print("done")
 
 if __name__ == "__main__":
     run()
+
+#================MUISTIINPANOJA:===================#
+
+"""
+
+==========RESPONSE BODY OPENAQ================
+  "results": [
+    {
+      "id": 2975,
+      "name": "Vartiokylä Huivipolku",
+      "locality": "Helsinki",
+      "timezone": "Europe/Helsinki",
+      "country": {
+        "id": 55,
+        "code": "FI",
+        "name": "Finland"
+      },
+==========RESPONSE BODY OPENAQ================
+
+"""
+
+"""      
+Found locations: 6  
+Location: 2975 Vartiokylä Huivipolku
+Location: 2998 Leppävaara 4
+Location: 4529 Tikkurila 3
+Location: 4588 Mannerheimintie
+Location: 4593 Kallio 2
+Location: 9287 Mäkelänkatu
+
+"""
+"""
+CSV-file:
+location_id --> 2975, 2998, 4529, 4588, 4593, 9287
+sensors_id --> PM2.5 = 27740, PM10 = 2002989, 03 = 6403, NO2 = 6306
+location --> Asemakoodi + OpenAQ id: FI00841-2998, FI00370-4529, FI00564-4588, FI00425-4593, FI00902-9287
+datetime --> aika
+lat --> latitudi (sama per location_id)
+lon --> longitudi (sama per location_id)
+parameter -->PM2.5 (pienet partikkelit), PM10(isot partikkelit), O3 (otsoni), NO2 (typpidioksidi), 
+units --> µg/m³
+value --> lukema
+"""

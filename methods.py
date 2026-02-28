@@ -67,7 +67,8 @@ def download_files_for_month(location_id, year, month):
     for date in all_dates:
         download_file_by_location(location_id, date.year, date.month, date.day) 
         #Käyttää vanhaa funktiota jolla ensin lataa per päivä kuukauden ajalta 
-        #Tekee joka päivältä erilliset filut. We don't want that
+        #Tekee joka päivältä erilliset filut. 
+        # We don't want that, kuukauden ajalta filuja tulee muuten aivan sairas määrä.
 
 def download_and_merge_month(location_id, year, month, city, country):
     start_date = pd.Timestamp(year, month, 1)
@@ -93,7 +94,9 @@ def download_and_merge_month(location_id, year, month, city, country):
         full_df["city"] = city
         full_df["country"] = country
         os.makedirs("data", exist_ok=True) #tehdään kansio
-        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv" #filepath luotaville filuille
+        #luotavat tiedostot on kuukauden ajalta jokaiselta bboxin sisällä olevalta mittauspisteeltä
+        #mittauspisteitä kuusi, tunnistettavissa filun numen alussa olevan location_id:n mukaan. 
+        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv" #filepath luotaville tiedostoille
         full_df.to_csv(filepath, index=False)
         return full_df
     else:
