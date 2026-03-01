@@ -9,11 +9,13 @@ from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 from urllib.parse import quote
 import io
+import numpy as np
 
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://openaq-data-archive.s3.amazonaws.com"
+
 
 def get_bbox(city):
     osm_url = f"https://nominatim.openstreetmap.org/search?q={quote(city)}&format=json"
@@ -117,19 +119,32 @@ def get_connection():
 def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
     with get_connection() as conn:
         with conn.cursor() as cur:
+            # Clear existing data
             cur.execute("DELETE FROM measurements;")
             cur.execute("DELETE FROM locations;")
             conn.commit()
-            files = glob.glob(f"{folder_path}/*.csv") 
-            #^löytää kaikki CSV-filut määrätyssä kansiossa
-            df_list = [pd.read_csv(file) for file in files]
-            #^lukee jokaisen CSV:n dataframeksi
-            df = pd.concat(df_list, ignore_index=True)
-            #^yhdistää nämä kaikki yksittäiset dataframet yhdeksi isoksi dataframeksi
 
+            # Read all CSVs
+            files = glob.glob(f"{folder_path}/*.csv")
+            df_list = [pd.read_csv(file) for file in files]
+            df = pd.concat(df_list, ignore_index=True)
+
+            # Select relevant columns and drop duplicates
             locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()
 
-            records = locations_df.to_records(index=False)
+            # Replace NaN with None for PostgreSQL
+            locations_df = locations_df.where(pd.notnull(locations_df), None)
+
+            # Convert NumPy numeric types to native Python types
+            records = [
+                tuple(
+                    x.item() if isinstance(x, (np.integer, np.floating)) else x
+                    for x in row
+                )
+                for row in locations_df.to_records(index=False)
+            ]
+
+            # Insert into PostgreSQL
             execute_values(
                 cur,
                 '''
