@@ -117,6 +117,7 @@ def get_connection():
             conn.close()
 
 def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
+    #tekoalyn tekemä korjausversio, toimii, mutta database modelissa ongelma
     with get_connection() as conn:
         with conn.cursor() as cur:
             # Clear existing data
@@ -154,6 +155,34 @@ def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
                 records
             )
         conn.commit()
+
+""" VANHA VERSIO, numpyerror
+def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM measurements;")
+            cur.execute("DELETE FROM locations;")
+            conn.commit()
+            files = glob.glob(f"{folder_path}/*.csv") 
+            #^löytää kaikki CSV-filut määrätyssä kansiossa
+            df_list = [pd.read_csv(file) for file in files]
+            #^lukee jokaisen CSV:n dataframeksi
+            df = pd.concat(df_list, ignore_index=True)
+            #^yhdistää nämä kaikki yksittäiset dataframet yhdeksi isoksi dataframeksi
+
+            locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()
+
+            records = locations_df.to_records(index=False)
+            execute_values(
+                cur,
+                '''
+                INSERT INTO locations (location_id, lat, lon, location, city, country)
+                VALUES %s
+                ''',
+                records
+            )
+        conn.commit()
+"""
 
 def populate_sensors(folder_path="data"):
     with get_connection() as conn:
