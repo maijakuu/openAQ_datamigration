@@ -1,0 +1,5 @@
+Workbench datamodel löytyy repon sisältä omana filunaan.
+
+14.3.2026 --> Palautettu 1 ja 2 -osiot projektista. 3-osiosta oma repolinkki myöhemmin.
+
+https://github.com/maijakuu/openAQ_datamigration
