@@ -204,13 +204,21 @@ def populate_sensors(folder_path="data"):
   
             sensors_df = df[['sensors_id','parameter','units']].drop_duplicates()
 
-            records = sensors_df.to_records(index=False)#massasiirto
+            # Convert NumPy numeric types to native Python types
+            records = [
+                tuple(
+                    x.item() if isinstance(x, (np.integer, np.floating)) else x
+                    for x in row
+                )
+                for row in sensors_df.to_records(index=False)
+            ]
+            
             execute_values(
                 cur,
                 '''
                 INSERT INTO sensors (sensors_id, parameter, units) 
                 VALUES %s
-                ON CONFLICT (location_id) DO NOTHING
+                ON CONFLICT (sensors_id) DO NOTHING
                 ''',
                 records
             )
@@ -229,13 +237,19 @@ def populate_measurements(folder_path="data"):
             measurements_df = df[['location_id','sensors_id', 'datetime', 'value']].drop_duplicates()
             measurements_df['datetime'] = pd.to_datetime(measurements_df['datetime'])
 
-            records = measurements_df.to_records(index=False)
+            records = [
+                tuple(
+                    x.item() if isinstance(x, (np.integer, np.floating)) else x
+                    for x in row
+                )
+                for row in measurements_df.to_records(index=False)
+            ]
+            
             execute_values(
                 cur,
                 '''
                 INSERT INTO measurements (location_id, sensors_id, datetime, value)
                 VALUES %s
-                ON CONFLICT (location_id) DO NOTHING
                 ''',
                 records
             )
