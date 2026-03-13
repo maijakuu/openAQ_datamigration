@@ -1,5 +1,13 @@
 from methods import * 
 
+#=======================================================================================#
+# Yleistä infoa tehtävän suorituksesta:
+# Tehtävän suorittamiseen on käytetty tuntien materiaaleja hyödyksi, mutta myös tekoälyä.
+# Tekoälyn käytön painopiste oli lähinnä koodin ongelmien etsimisessä, sekä databasen pyörityksessä (databasemodelin rakennus, siihen perehtyminen ja ymmärrys)
+# Tekoälyn käytössä promptit eivät ikinä olleen "Tee minulle tämä" -tyylisiä, vaan "Auta minua löytämään vika" tai "Selitä minulle asian x toiminta"
+# Lopputulemana ymmärrän siis myös itse mitä koodissa tapahtuu.  
+#=======================================================================================#
+
 def run():
     while True:
         _choice = input(
@@ -29,13 +37,12 @@ def run():
                 location_id = loc["id"]
                 location_name = loc["name"]
                 country_name = loc["country"]["name"]
-                country_code = loc["country"]["code"]
                 city_name = loc.get("locality")
 
                 print("Location:", location_id, location_name)
                 print("City:", city_name)
                 print("Country:", country_name)
-                    #download_file_by_location(location_id, 2024, 1, 1) Tämä antaa yhden päivän tiedot
+                #download_file_by_location(location_id, 2024, 1, 1) Tämä antaa yhden päivän tiedot
                 download_and_merge_month(location_id,2024,1,city_name,country_name) #KOLMAS FUNKTIO
                 #Tämä antaa yhden location_id:n tiedot yhdeltä kuukaudelta
     print()
@@ -44,10 +51,10 @@ def run():
 if __name__ == "__main__":
     run()
 
-#================MUISTIINPANOJA:===================#
-
+#=======================================================================================#
+#                 MUISTIINPANOJA TEHTÄVÄN TUEKSI
+#=======================================================================================#
 """
-
 ==========RESPONSE BODY OPENAQ================
   "results": [
     {
@@ -61,9 +68,7 @@ if __name__ == "__main__":
         "name": "Finland"
       },
 ==========RESPONSE BODY OPENAQ================
-
 """
-
 """      
 Found locations: 6  
 Location: 2975 Vartiokylä Huivipolku
@@ -72,7 +77,6 @@ Location: 4529 Tikkurila 3
 Location: 4588 Mannerheimintie
 Location: 4593 Kallio 2
 Location: 9287 Mäkelänkatu
-
 """
 """
 CSV-file:

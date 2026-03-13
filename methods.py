@@ -16,7 +16,9 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 BASE_URL = "https://openaq-data-archive.s3.amazonaws.com"
 
-
+#=======================================================================================#
+#                                  GET BBOX -FUNKTIO
+#=======================================================================================#
 def get_bbox(city):
     osm_url = f"https://nominatim.openstreetmap.org/search?q={quote(city)}&format=json"
     #city = Helsinki, tai mikä vaan
@@ -35,9 +37,12 @@ def get_bbox(city):
 
     return openaq_bbox
 
-#tämä funktio saa parametrinaan kaupungin bounding boxin get_bbox-funktiolta
-#locations-api ottaa yhtenä parametrina bbox:in, joten sitä käytetään tässä
-#parametreja on myös muita, mutta bbox tässä tapauksesssa paras
+#=======================================================================================#
+#                          GET LOCATIONS BY USING BBOX -FUNKTIO
+#=======================================================================================#
+# tämä funktio saa parametrinaan kaupungin bounding boxin get_bbox-funktiolta
+# locations-api ottaa yhtenä parametrina bbox:in, joten sitä käytetään tässä
+# parametreja on myös muita, mutta bbox tässä tapauksesssa paras
 def get_openaq_locations_by_bbox(_bbox):
     response = requests.get(
         f'https://api.openaq.org/v3/locations?limit=1000&page=1&order_by=id&sort_order=asc&bbox={_bbox}',
@@ -47,6 +52,10 @@ def get_openaq_locations_by_bbox(_bbox):
         _locations = response.json()['results']
 
     return _locations
+
+#=======================================================================================#
+#                     LATAA CSV-FILU SIJAINNIN MUKAAN -FUNKTIO
+#=======================================================================================#
 
 def download_file_by_location(location_id, year, month, day):
     date_str = f"{year}{month:02d}{day:02d}"
@@ -61,17 +70,24 @@ def download_file_by_location(location_id, year, month, day):
     else:
         print(f"Failed to fetch. Status: {response.status_code}")
 
+#=======================================================================================#
+#                 TEE CSV-FILU JOKAISELTA PÄIVÄLTÄ MITTAUSPAIKAN MUKAAN -FUNKTIO
+#=======================================================================================#
+
 def download_files_for_month(location_id, year, month):
-    start_date = pd.Timestamp(year, month, 1) #Tää on joku pandasin hieno ominaisuus
+    start_date = pd.Timestamp(year, month, 1) # Tää on joku pandasin hieno ominaisuus
     end_date = start_date + pd.offsets.MonthEnd(0)
     all_dates = pd.date_range(start=start_date, end=end_date)
 
     for date in all_dates:
         download_file_by_location(location_id, date.year, date.month, date.day) 
-        #Käyttää vanhaa funktiota jolla ensin lataa per päivä kuukauden ajalta 
-        #Tekee joka päivältä erilliset filut. 
+        # Käyttää vanhaa funktiota jolla ensin lataa per päivä kuukauden ajalta 
+        # Tekee joka päivältä erilliset filut. 
         # We don't want that, kuukauden ajalta filuja tulee muuten aivan sairas määrä.
 
+#=======================================================================================#
+#                 KOKOA CSV-FILUT KUUKAUDEN AJALTA PER MITTAUSPAIKKA -FUNKTIO
+#=======================================================================================#
 def download_and_merge_month(location_id, year, month, city, country):
     start_date = pd.Timestamp(year, month, 1)
     end_date = start_date + pd.offsets.MonthEnd(0)
@@ -81,7 +97,7 @@ def download_and_merge_month(location_id, year, month, city, country):
 
     for date in all_dates:
         date_str = f"{date.year}{date.month:02d}{date.day:02d}"
-        #tää on staattinen filestorage. Antaa raakadatan location_id:n mukaan
+        # tää on staattinen filestorage. Antaa raakadatan location_id:n mukaan
         key = f"records/csv.gz/locationid={location_id}/year={date.year}/month={date.month:02d}/location-{location_id}-{date_str}.csv.gz"
         full_url = f"{BASE_URL}/{key}"
 
@@ -96,9 +112,9 @@ def download_and_merge_month(location_id, year, month, city, country):
         full_df["city"] = city
         full_df["country"] = country
         os.makedirs("data", exist_ok=True) #tehdään kansio
-        #luotavat tiedostot on kuukauden ajalta jokaiselta bboxin sisällä olevalta mittauspisteeltä
-        #mittauspisteitä kuusi, tunnistettavissa filun numen alussa olevan location_id:n mukaan. 
-        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv" #filepath luotaville tiedostoille
+        # luotavat tiedostot on kuukauden ajalta jokaiselta bboxin sisällä olevalta mittauspisteeltä
+        # mittauspisteitä kuusi, tunnistettavissa filun numen alussa olevan location_id:n mukaan. 
+        filepath= f"data/{location_id}-{year}-{month:02d}-merged.csv" # filepath luotaville tiedostoille
         full_df.to_csv(filepath, index=False)
         return full_df
     else:
@@ -106,7 +122,11 @@ def download_and_merge_month(location_id, year, month, city, country):
         return None
 
 @contextlib.contextmanager
-    
+
+#=======================================================================================#
+#                 YHDISTÄ TIETOKANTAAN -FUNKTIO
+#=======================================================================================#
+# Haetaan tällä .env filusta tarvittavat muuttujat databaseen ja muuhun liittyen
 def get_connection():
     conn = None
     try:
@@ -116,34 +136,38 @@ def get_connection():
         password=os.getenv('DB_PWD'),
         host="localhost",
         port=5432,
-        options=os.getenv('DB_OPTIONS')
+        options=os.getenv('DB_OPTIONS') # tällä määritelty databasen schema erikseen, ettei mene public.
 )
         yield conn
     finally:
         if conn is not None:
             conn.close()
 
-def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
-    #tekoalyn tekemä korjausversio, toimii, mutta database modelissa ongelma
+#=======================================================================================#
+#                           DATABASEN TÄYTTÖFUNKTIOT 3 KPL
+#=======================================================================================#
+
+def populate_locations(folder_path="data"): # Osoitetaan kansio, missä filut on
     with get_connection() as conn:
         with conn.cursor() as cur:
-            # Clear existing data
-            cur.execute("DELETE FROM measurements;")
-            cur.execute("DELETE FROM locations;")
+            # Poistetaan vanha data, jos sellaista on
+            cur.execute("DELETE FROM measurements;") # Poistetaan ensin measurements, koska measurements käyttää locations_id foreign key:nä
+            cur.execute("DELETE FROM locations;") # Vasta sitten poistetaan vanhat locations tablet
             conn.commit()
 
-            # Read all CSVs
+            # Luetaan CSV-filut
             files = glob.glob(f"{folder_path}/*.csv")
             df_list = [pd.read_csv(file) for file in files]
             df = pd.concat(df_list, ignore_index=True)
 
-            # Select relevant columns and drop duplicates
-            locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()
+            # Valitaan halutut rivit, poistetaan duplikaatit
+            locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()# drop_duplicates poistaa vain ne rivit, jotka ovat 100% identtisiä keskenään
 
-            # Replace NaN with None for PostgreSQL
             locations_df = locations_df.where(pd.notnull(locations_df), None)
 
-            # Convert NumPy numeric types to native Python types
+            # pandas käyttää numpy-arvoja, mitä python ei ymmärrä
+            # konvertoidaan nämä arvot pythonille sopiviksi muodoiksi
+            # samalla tehdään näistä myös databaseen istuva muoto
             records = [
                 tuple(
                     x.item() if isinstance(x, (np.integer, np.floating)) else x
@@ -152,7 +176,8 @@ def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
                 for row in locations_df.to_records(index=False)
             ]
 
-            # Insert into PostgreSQL
+            # Lisätään databaseen
+            # Sama locations_id on eri CSV-filuissa useamman kerran, minkä vuoksi lisätty ehtolause ON CONFLICT
             execute_values(
                 cur,
                 '''
@@ -164,55 +189,26 @@ def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
             )
         conn.commit()
 
-""" VANHA VERSIO, numpyerror
-def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM measurements;")
-            cur.execute("DELETE FROM locations;")
-            conn.commit()
-            files = glob.glob(f"{folder_path}/*.csv") 
-            #^löytää kaikki CSV-filut määrätyssä kansiossa
-            df_list = [pd.read_csv(file) for file in files]
-            #^lukee jokaisen CSV:n dataframeksi
-            df = pd.concat(df_list, ignore_index=True)
-            #^yhdistää nämä kaikki yksittäiset dataframet yhdeksi isoksi dataframeksi
-
-            locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()
-
-            records = locations_df.to_records(index=False)
-            execute_values(
-                cur,
-                '''
-                INSERT INTO locations (location_id, lat, lon, location, city, country)
-                VALUES %s
-                ''',
-                records
-            )
-        conn.commit()
-"""
-
 def populate_sensors(folder_path="data"):
+# Toistetaan sama kaava, kuin populate_locations()
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM measurements;")
-            cur.execute("DELETE FROM sensors;")
+            cur.execute("DELETE FROM measurements;") # sensor_id foreign key:nä measurementseissa
+            cur.execute("DELETE FROM sensors;") # vasta sitten poistetaan vanhat sensors tablet
             conn.commit()
             files = glob.glob(f"{folder_path}/*.csv")
             df_list = [pd.read_csv(file) for file in files]
             df = pd.concat(df_list, ignore_index=True)
   
-            sensors_df = df[['sensors_id','parameter','units']].drop_duplicates()
-
-            # Convert NumPy numeric types to native Python types
-            records = [
+            sensors_df = df[['sensors_id','parameter','units']].drop_duplicates() # drop_duplicates poistaa vain ne rivit, jotka ovat 100% identtisiä keskenään
+            records = [ 
                 tuple(
                     x.item() if isinstance(x, (np.integer, np.floating)) else x
                     for x in row
                 )
                 for row in sensors_df.to_records(index=False)
             ]
-            
+            # Sama homma: samaa sensorityyppiä käytetään useammassa lokaatiossa CSV-filujen välillä, joten lisättävä ehto ON CONFLICT
             execute_values(
                 cur,
                 '''
