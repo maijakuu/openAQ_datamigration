@@ -110,7 +110,14 @@ def download_and_merge_month(location_id, year, month, city, country):
 def get_connection():
     conn = None
     try:
-        conn = psycopg2.connect(f"dbname={os.getenv('DB')} user={os.getenv('DB_USER')} password={os.getenv('DB_PWD')}")
+        conn = psycopg2.connect(
+        dbname=os.getenv('DB'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PWD'),
+        host="localhost",
+        port=5432,
+        options=os.getenv('DB_OPTIONS')
+)
         yield conn
     finally:
         if conn is not None:
@@ -151,6 +158,7 @@ def populate_locations(folder_path="data"): #osoitetaan kansio, missä filut on
                 '''
                 INSERT INTO locations (location_id, lat, lon, location, city, country)
                 VALUES %s
+                ON CONFLICT (location_id) DO NOTHING
                 ''',
                 records
             )
@@ -202,6 +210,7 @@ def populate_sensors(folder_path="data"):
                 '''
                 INSERT INTO sensors (sensors_id, parameter, units) 
                 VALUES %s
+                ON CONFLICT (location_id) DO NOTHING
                 ''',
                 records
             )
@@ -226,6 +235,7 @@ def populate_measurements(folder_path="data"):
                 '''
                 INSERT INTO measurements (location_id, sensors_id, datetime, value)
                 VALUES %s
+                ON CONFLICT (location_id) DO NOTHING
                 ''',
                 records
             )
