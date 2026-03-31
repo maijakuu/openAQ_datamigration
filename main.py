@@ -13,21 +13,27 @@ def run():
         _choice = input(
             "Choose action:  "
             "\n(0: Exit, "
-            "\n1: Populate locations -table"
-            "\n2: Populate sensors -table"
-            "\n3: Populate measurements -table"
-            "\n4: Create dataset from API and put under folder 'data' "
+            "\n1: Populate countries -table"
+            "\n2: Populate cities -table"
+            "\n3: Populate locations -table"
+            "\n4: Populate sensors -table"
+            "\n5: Populate measurements -table"
+            "\n6: Create dataset from API and put under folder 'data' "
         )
 
         if _choice == "0":
             break
         elif _choice == "1":
-            populate_locations()
+            populate_countries()
         elif _choice == "2":
-            populate_sensors()
+            populate_cities()
         elif _choice == "3":
-            populate_measurements()
+            populate_locations()
         elif _choice == "4":
+            populate_sensors()
+        elif _choice == "5":
+            populate_measurements()
+        elif _choice == "6":
             bbox = get_bbox("Helsinki") #ENSIMMÄINEN FUNKTIO
             print(bbox)
             locations = get_openaq_locations_by_bbox(bbox) #TOINEN FUNKTIO

@@ -144,8 +144,73 @@ def get_connection():
             conn.close()
 
 #=======================================================================================#
-#                           DATABASEN TÄYTTÖFUNKTIOT 3 KPL
+#                           DATABASEN TÄYTTÖFUNKTIOT 5 KPL
 #=======================================================================================#
+def populate_countries(folder_path="data"):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM city;") 
+            cur.execute("DELETE FROM country;") 
+            conn.commit()
+            files = glob.glob(f"{folder_path}/*.csv")
+            df_list = [pd.read_csv(file) for file in files]
+            df = pd.concat(df_list, ignore_index=True)
+  
+            country_df = df[['country']].drop_duplicates()
+            country_df = country_df.rename(columns={"country": "country_name"})
+
+            records = [ 
+                tuple(
+                    x.item() if isinstance(x, (np.integer, np.floating)) else x
+                    for x in row
+                )
+                for row in country_df.to_records(index=False)
+            ]
+            execute_values(
+                cur,
+                '''
+                INSERT INTO country (country_name) 
+                VALUES %s
+                ''',
+                records
+            )
+        conn.commit()
+
+def populate_cities(folder_path="data"):
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM locations;")
+            cur.execute("DELETE FROM city;") 
+            conn.commit()
+            files = glob.glob(f"{folder_path}/*.csv")
+            df_list = [pd.read_csv(file) for file in files]
+            df = pd.concat(df_list, ignore_index=True)
+  
+            city_df = df[['country','city']].drop_duplicates()
+            city_df = city_df.rename(columns={"city": "city_name"})
+
+            cur.execute("SELECT country_id, country_name FROM country;")
+            country_haku = {name: id for id, name in cur.fetchall()}
+
+            city_df["country_id"] = city_df["country"].map(country_haku)
+            city_df = city_df[['country_id', 'city_name']].drop_duplicates()
+
+            records = [ 
+                tuple(
+                    x.item() if isinstance(x, (np.integer, np.floating)) else x
+                    for x in row
+                )
+                for row in city_df.to_records(index=False)
+            ]
+            execute_values(
+                cur,
+                '''
+                INSERT INTO city (country_id, city_name) 
+                VALUES %s
+                ''',
+                records
+            )
+        conn.commit()
 
 def populate_locations(folder_path="data"): # Osoitetaan kansio, missä filut on
     with get_connection() as conn:
@@ -161,13 +226,14 @@ def populate_locations(folder_path="data"): # Osoitetaan kansio, missä filut on
             df = pd.concat(df_list, ignore_index=True)
 
             # Valitaan halutut rivit, poistetaan duplikaatit
-            locations_df = df[['location_id','lat','lon','location','city','country']].drop_duplicates()# drop_duplicates poistaa vain ne rivit, jotka ovat 100% identtisiä keskenään
+            locations_df = df[['location_id','lat','lon','location', 'city']].drop_duplicates()# drop_duplicates poistaa vain ne rivit, jotka ovat 100% identtisiä keskenään
 
-            locations_df = locations_df.where(pd.notnull(locations_df), None)
+            cur.execute("SELECT city_id, city_name FROM city;")
+            city_haku = {name: id for id, name in cur.fetchall()}
 
-            # pandas käyttää numpy-arvoja, mitä python ei ymmärrä
-            # konvertoidaan nämä arvot pythonille sopiviksi muodoiksi
-            # samalla tehdään näistä myös databaseen istuva muoto
+            locations_df["city_id"] = locations_df["city"].map(city_haku)
+            locations_df = locations_df[['location_id', 'lat', 'lon', 'location', 'city_id']]
+
             records = [
                 tuple(
                     x.item() if isinstance(x, (np.integer, np.floating)) else x
@@ -181,7 +247,7 @@ def populate_locations(folder_path="data"): # Osoitetaan kansio, missä filut on
             execute_values(
                 cur,
                 '''
-                INSERT INTO locations (location_id, lat, lon, location, city, country)
+                INSERT INTO locations (location_id, lat, lon, location, city_id)
                 VALUES %s
                 ON CONFLICT (location_id) DO NOTHING
                 ''',
